@@ -4,6 +4,8 @@ import 'package:sleep_up/views/firebase_upload.dart';
 import '../controllers/sleep_controller.dart';
 
 class SleepView extends StatelessWidget {
+  const SleepView({super.key});
+
   @override
   Widget build(BuildContext context) {
     final c = Get.find<SleepController>();

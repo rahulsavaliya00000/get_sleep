@@ -1,79 +1,95 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:health/health.dart';
 import 'package:sleep_up/bindings/sleep_binding.dart';
 import 'package:sleep_up/firebase_options.dart';
 import 'package:sleep_up/views/sleep_view.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// The name you register your task under.
-const String syncTask = "syncSleepSessions";
-Future<void> main() async {
+const String syncTask = "periodic-sync-46";
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // :one: Initialize Firebase first
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // :two: Initialize Workmanager
 
-  Workmanager().cancelAll();
-  Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: true, // verbose logs during development
-    
-  );
-  // :three: Register a periodic background task:
-  await Workmanager().registerPeriodicTask(
-    "syncSleepSessions-id",    // a unique string ID
-    syncTask,                  // your task name constant
-    frequency: const Duration(minutes: 15),
-    initialDelay: const Duration(seconds: 10),
-    constraints: Constraints(
-      networkType: NetworkType.connected,
-      requiresBatteryNotLow: true,
-    ),
-  );
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
 
-
-  // :four: Start your app
   runApp(
     GetMaterialApp(
       title: 'Sleep Data Demo',
-      debugShowCheckedModeBanner: false,
       initialBinding: SleepBinding(),
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        scaffoldBackgroundColor: Colors.white,
-      ),
       home: SleepView(),
     ),
   );
 }
 
-/// This is the headless entry-point for Workmanager.
-/// Annotate with @pragma so it’s not tree‑shaken.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
-    final now = DateTime.now();
-    debugPrint('🕵️ [Workmanager] callbackDispatcher fired [$taskName] at $now');
-
     WidgetsFlutterBinding.ensureInitialized();
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint('✅ Firebase re-initialized in background isolate');
 
-    try {
-      debugPrint('✍️ Writing to Firestore…');
-      await FirebaseFirestore.instance.collection('users').add({
-        'name': 'rahul',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-      debugPrint('✅ [Workmanager] wrote rahul to Firestore');
-      return true;
-    } catch (e) {
-      debugPrint('❌ [Workmanager] failed to write: $e');
-      return false;
+    final health = Health();
+
+    if (!await health.isHealthDataInBackgroundAuthorized()) {
+      debugPrint(' No background‐read permission: skipping this run');
+      return Future.value(true);
     }
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final endOfDay = startOfDay.add(Duration(days: 1));
+    final extendedStart = startOfDay.subtract(Duration(hours: 8));
+    final extendedEnd = endOfDay.add(Duration(hours: 8));
+
+    List<HealthDataPoint> data;
+    try {
+      data = await health.getHealthDataFromTypes(
+        startTime: extendedStart,
+        endTime: extendedEnd,
+        types: [HealthDataType.SLEEP_SESSION],
+      );
+      data = health.removeDuplicates(data);
+    } catch (e) {
+      debugPrint(' Health read failed: $e');
+      return Future.value(true);
+    }
+
+    double hours = 0.0;
+    for (var p in data) {
+      final oStart = p.dateFrom.isAfter(startOfDay) ? p.dateFrom : startOfDay;
+      final oEnd = p.dateTo.isBefore(endOfDay) ? p.dateTo : endOfDay;
+      if (oStart.isBefore(oEnd)) {
+        hours += oEnd.difference(oStart).inMinutes / 60.0;
+      }
+    }
+    hours = double.parse(hours.toStringAsFixed(2));
+    debugPrint('Today’s sleep hours: $hours');
+
+    // 🔍 2) Only upload non-zero (or always include task markers, up to you)
+    if (hours > 0) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc('sleep_summary')
+            .set({
+              'todaySleepHours': hours,
+              'updatedAt': FieldValue.serverTimestamp(),
+              'dataPoints': data.length,
+              'taskName': taskName,
+              'lastTaskRun': FieldValue.serverTimestamp(),
+            });
+        debugPrint(' Updated todaySleepHours: $hours');
+      } catch (e) {
+        debugPrint(' Firestore upload failed: $e');
+      }
+    } else {
+      debugPrint(' hours == 0.0; not updating Firestore');
+    }
+
+    return Future.value(true);
   });
 }

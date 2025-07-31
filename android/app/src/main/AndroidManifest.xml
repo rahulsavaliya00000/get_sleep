@@ -2,22 +2,31 @@
           xmlns:tools="http://schemas.android.com/tools"
           package="com.example.sleep_up">
 
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY"/>
-    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"/>
-    <uses-permission android:name="android.permission.health.READ_SLEEP"/>
-    <uses-permission android:name="android.permission.health.READ_ACTIVITY"/>
-    <uses-permission android:name="android.permission.health.WRITE_SLEEP"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+    <!-- ================= Permissions ================= -->
+    <!-- Core Android Permissions -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.RECEIVE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- Location & Sensors (if needed for advanced health data) -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+
+    <!-- Health Connect / Google Fit permissions -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY"/>
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"/>
+    <uses-permission android:name="android.permission.health.READ_ACTIVITY"/>
+    <uses-permission android:name="android.permission.health.READ_SLEEP"/>
+    <uses-permission android:name="android.permission.health.READ_STEPS"/>
+    <uses-permission android:name="android.permission.health.READ_EXERCISE"/>
+    <uses-permission android:name="android.permission.health.WRITE_SLEEP"/>
+
+    <!-- ================ Application ================= -->
     <application
         android:label="sleep_up"
         android:icon="@mipmap/ic_launcher"
@@ -47,13 +56,13 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Health Connect permissions rationale -->
+            <!-- Health Connect Permissions Rationale -->
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
             </intent-filter>
         </activity>
 
-        <!-- Activity alias for privacy policy -->
+        <!-- Privacy Policy Alias -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"
@@ -65,18 +74,22 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Workmanager headless receiver -->
+        <!-- ============ WorkManager Integration ============= -->
+        <service
+            android:name="be.tramckrijte.workmanager.WorkManagerTaskService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false"/>
+
         <receiver
-            android:name="be.tramckrijte.workmanager.BackgroundWorker"
-            android:exported="false"
-            tools:node="replace">
+            android:name="be.tramckrijte.workmanager.RescheduleReceiver"
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <action android:name="android.intent.action.REBOOT"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
             </intent-filter>
         </receiver>
 
-        <!-- Flutter local notifications -->
+        <!-- ========== Flutter Local Notifications ========== -->
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
             android:exported="false"/>
@@ -86,7 +99,7 @@
 
     </application>
 
-    <!-- Queries for text processing and Health Connect -->
+    <!-- ============ Queries (Health Connect) ============ -->
     <queries>
         <package android:name="com.google.android.apps.healthdata"/>
         <intent>

@@ -1,17 +1,14 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sleep_up/core/health_utils.dart';
 import '../models/sleep_day.dart';
 
 class SleepService {
-  /// Fetch last [days] days of Google Fit SLEEP_SESSION only
   static Future<List<SleepDay>> fetchDailySessions(
     Health health, {
     int days = 7,
   }) async {
-    // Only request the SESSION blocks from Google Fit
     final types = [HealthDataType.SLEEP_SESSION];
 
     // On Android, request activity recognition
@@ -37,7 +34,6 @@ class SleepService {
     ).subtract(Duration(days: days));
     final end = DateTime(now.year, now.month, now.day + 1);
 
-    // Fetch & dedupe
     var allData = await health.getHealthDataFromTypes(
       startTime: start,
       endTime: end,
