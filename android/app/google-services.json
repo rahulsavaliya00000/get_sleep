@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "148059280801",
+    "project_id": "sleep-c8e45",
+    "storage_bucket": "sleep-c8e45.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:148059280801:android:efad35a37a16fe82eb67e0",
+        "android_client_info": {
+          "package_name": "com.example.sleep_up"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoPg9aub_kfJR8-ribP2GpX-274rxOLuU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
